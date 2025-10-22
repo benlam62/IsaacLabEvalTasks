@@ -20,10 +20,9 @@ isaaclab 0.37.2 requires torch>=2.7, but you have torch 2.5.1 which is incompati
 isaacsim-core 5.0.0 requires torch==2.7.0, but you have torch 2.5.1 which is incompatible.
 </pre>
 
-## Running on Blackwell GPUs
+## Running on DGX Spark and Blackwell GPUs
 
-Unfortunately, due to limited support of flash attention module (by May 2025), GR00T policy can only support running on non-Blackwell GPUs. However
-you can run Mimic-related data generation workflows and GR00T-Lerobot data conversion on Blackwell. Blackwell support is coming soon.
+Unfortunately, due to limited support of flash attention module (by May 2025), GR00T policy is not supported on DGX Spark and Blackwell GPUs. However you can run Mimic-related data generation workflows and GR00T-Lerobot data conversion on Blackwell. Blackwell support is coming soon.
 
 ## Running evaluation on Multiple GPUs
 
