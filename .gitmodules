@@ -2,3 +2,9 @@
 	path = submodules/Isaac-GR00T
 	url = git@github.com:NVIDIA/Isaac-GR00T.git
 	branch = n1-release
+[submodule "openpi"]
+	path = openpi
+	url = https://github.com/benlam62/openpi.git
+[submodule "submodules/openpi"]
+	path = submodules/openpi
+	url = https://github.com/benlam62/openpi.git
