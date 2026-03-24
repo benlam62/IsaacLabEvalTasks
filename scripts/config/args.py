@@ -49,6 +49,152 @@ class EvalTaskConfig(Enum):
         self.task_index = task_index
 
 @dataclass
+class pi05ClosedLoopArguments:
+    # Simulation specific parameters
+    headless: bool = field(
+        default=False, metadata={"description": "Whether to run the simulator in headless (no GUI) mode."}
+    )
+    num_envs: int = field(default=10, metadata={"description": "Number of environments to run in parallel."})
+    enable_pinocchio: bool = field(
+        default=True,
+        metadata={
+            "description": (
+                "Whether to use Pinocchio for physics simulation. Required for NutPouring and ExhaustPipe tasks."
+            )
+        },
+    )
+    record_camera: bool = field(
+        default=False,
+        metadata={"description": "Whether to record the camera images as videos during evaluation."},
+    )
+    record_video_output_path: str = field(
+        default="videos/",
+        metadata={"description": "Path to save the recorded videos."},
+    )
+
+    # model specific parameters
+    task_name: str = field(
+        default="nutpouring", metadata={"description": "Short name of the task to run (e.g., nutpouring, exhaustpipe)."}
+    )
+    task: str = field(default="", metadata={"description": "Full task name for the gym-registered environment."})
+    language_instruction: str = field(
+        default="", metadata={"description": "Instruction given to the policy in natural language."}
+    )
+    #model_path: str = field(default="", metadata={"description": "Full path to the tuned model checkpoint directory."})
+    action_horizon: int = field(
+        default=16, metadata={"description": "Number of actions in the policy's predictionhorizon."}
+    )
+    embodiment_tag: str = field(
+        default="gr1",
+        metadata={
+            "description": (
+                "Identifier for the robot embodiment used in the policy inference (e.g., 'gr1' or 'new_embodiment')."
+            )
+        },
+    )
+    denoising_steps: int = field(
+        default=4, metadata={"description": "Number of denoising steps used in the policy inference."}
+    )
+    data_config: str = field(
+        default="gr1_arms_only", metadata={"description": "Name of the data configuration to use for the policy."}
+    )
+    original_image_size: tuple[int, int, int] = field(
+        default=(160, 256, 3), metadata={"description": "Original size of input images as (height, width, channels)."}
+    )
+    target_image_size: tuple[int, int, int] = field(
+        default=(256, 256, 3),
+        metadata={"description": "Target size for images after resizing and padding as (height, width, channels)."},
+    )
+    gr00t_joints_config_path: Path = field(
+        default=Path(__file__).parent.resolve() / "gr00t" / "gr00t_joint_space.yaml",
+        metadata={"description": "Path to the YAML file specifying the joint ordering configuration for GR00T policy."},
+    )
+
+    # robot (GR1) simulation specific parameters
+    action_joints_config_path: Path = field(
+        default=Path(__file__).parent.resolve() / "gr1" / "action_joint_space.yaml",
+        metadata={
+            "description": (
+                "Path to the YAML file specifying the joint ordering configuration for GR1 action space in Lab."
+            )
+        },
+    )
+    state_joints_config_path: Path = field(
+        default=Path(__file__).parent.resolve() / "gr1" / "state_joint_space.yaml",
+        metadata={
+            "description": (
+                "Path to the YAML file specifying the joint ordering configuration for GR1 state space in Lab."
+            )
+        },
+    )
+
+    # Default to GPU policy and CPU physics simulation
+    policy_device: str = field(
+        default="cuda", metadata={"description": "Device to run the policy model on (e.g., 'cuda' or 'cpu')."}
+    )
+    simulation_device: str = field(
+        default="cpu", metadata={"description": "Device to run the physics simulation on (e.g., 'cpu' or 'cuda')."}
+    )
+
+    # Evaluation parameters
+    max_num_rollouts: int = field(
+        default=100, metadata={"description": "Maximum number of rollouts to perform during evaluation."}
+    )
+    checkpoint_name: str = field(
+        default="gr00t-n1-2b-tuned", metadata={"description": "Name of the model checkpoint used for evaluation."}
+    )
+    eval_file_path: Optional[str] = field(
+        default=None, metadata={"description": "Path to the file where evaluation results will be saved."}
+    )
+
+    # Closed loop specific parameters
+    num_feedback_actions: int = field(
+        default=16,
+        metadata={
+            "description": "Number of feedback actions to execute per rollout (can be less than action_horizon)."
+        },
+    )
+    rollout_length: int = field(default=30, metadata={"description": "Number of steps in each rollout episode."})
+    seed: int = field(default=10, metadata={"description": "Random seed for reproducibility."})
+
+    def __post_init__(self):
+        # Populate fields from enum based on task_name
+        if self.task_name == "Nut-Pouring-task":
+            task_name = "NUTPOURING"
+        elif self.task_name == "Exhaust-Pipe-Sorting-task":
+            task_name = "PIPESORTING"
+        else: 
+            task_name = self.task_name
+        #if self.task_name.upper() not in EvalTaskConfig.__members__:
+        #    raise ValueError(f"task_name must be one of: {', '.join(EvalTaskConfig.__members__.keys())}")
+        #config = EvalTaskConfig[self.task_name.upper()]
+        if task_name.upper() not in EvalTaskConfig.__members__:
+            raise ValueError(f"task_name must be one of: {', '.join(EvalTaskConfig.__members__.keys())}")
+        config = EvalTaskConfig[task_name.upper()]
+        if self.task == "":
+            self.task = config.task
+        #if self.model_path == "":
+        #    self.model_path = config.model_path
+        if self.language_instruction == "":
+            self.language_instruction = config.language_instruction
+        # If model path is relative, return error
+        #if not os.path.isabs(self.model_path):
+        #    raise ValueError("model_path must be an absolute path. Do not use relative paths.")
+        assert (
+            self.num_feedback_actions <= self.action_horizon
+        ), "num_feedback_actions must be less than or equal to action_horizon"
+        # assert all paths exist
+        assert Path(self.gr00t_joints_config_path).exists(), "gr00t_joints_config_path does not exist"
+        assert Path(self.action_joints_config_path).exists(), "action_joints_config_path does not exist"
+        assert Path(self.state_joints_config_path).exists(), "state_joints_config_path does not exist"
+        #assert Path(self.model_path).exists(), "model_path does not exist."
+        # embodiment_tag
+        assert self.embodiment_tag in [
+            "gr1",
+            "new_embodiment",
+        ], "embodiment_tag must be one of the following: " + ", ".join(["gr1", "new_embodiment"])
+
+@dataclass
 class Gr00tN1ClosedLoopArguments:
     # Simulation specific parameters
     headless: bool = field(
